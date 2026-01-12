@@ -3,24 +3,61 @@ import mysql.connector
 
 app = Flask(__name__)
 
-con = mysql.connector.connect(host='localhost', user='root', password='', database='inventory')
+# con = mysql.connector.connect(host='localhost', user='root', password='', database='inventory')
+con = mysql.connector.connect(
+    host="127.0.0.1",
+    user="root",
+    password="password",  
+    database="sample"     
+)
 cur = con.cursor()
-
 
 @app.route('/')
 def home():
-    cur.execute("SELECT * FROM data")
-    data = cur.fetchall()
-    print(data[-1])
-    return render_template('index.html', units = data[-1])
+    cur = con.cursor(dictionary=True)
+
+    # 1. Get ALL items to iterate over in the dashboard
+    cur.execute("SELECT * FROM items")
+    items = cur.fetchall()
+
+    # 2. Get Order Summaries (Still useful for top-level stats)
+    cur.execute("SELECT status, COUNT(*) as count FROM orders GROUP BY status")
+    order_rows = cur.fetchall()
+
+    # 3. Calculate Totals for the "Stats" section
+    order_stats = {row['status']: row['count'] for row in order_rows}
+    total_stock = sum(item['quantity'] for item in items)
+    total_orders = sum(order_stats.values())
+
+    items_in_production = sum(item['quantity'] for item in items if item['status'] == 'In Production')
+    items_ready = sum(item['quantity'] for item in items if item['status'] == 'Ready')
+
+    return render_template(
+        'index.html',
+        items=items,
+        orders=order_stats,
+        total_stock=total_stock,
+        total_orders=total_orders,
+        items_in_production=items_in_production,
+        items_ready=items_ready)
+
+# @app.route('/update')
+# def update():
+
+#     cur.execute("SELECT * FROM data")
+#     data = cur.fetchall()
+
+#     return render_template('update.html', units = data[-1])
 
 @app.route('/update')
-def update():
-
-    cur.execute("SELECT * FROM data")
-    data = cur.fetchall()
-
-    return render_template('update.html', units = data[-1])
+def update_page():
+    # We need to fetch items here too, so the dropdown menu works!
+    cur = con.cursor(dictionary=True)
+    cur.execute("SELECT * FROM items")
+    items = cur.fetchall()
+    con.close()
+    
+    return render_template('update.html', items=items)
 
 @app.route('/login')
 def login():
@@ -62,6 +99,16 @@ def val():
         return render_template('update.html', units = data[-1])
 
     return render_template('update.html', units = data[-1])
+
+@app.route('/add_user', methods=['POST'])
+def add_user():
+    name = request.form['name']
+    email = request.form['email']
+    sql = "INSERT INTO users (name, email) VALUES (%s, %s)"
+    val = (name, email)
+    cursor.execute(sql, val)
+    db.commit()
+    return "User added successfully!"
 
 if __name__=='__main__':
     app.run(debug = True)
