@@ -1,3 +1,6 @@
+import os
+import boto3
+from dotenv import load_dotenv
 from flask import Flask, render_template, request, url_for, redirect
 import mysql.connector
 
@@ -11,6 +14,41 @@ con = mysql.connector.connect(
     database="sample"     
 )
 cur = con.cursor()
+
+sns_client = boto3.client(
+    'sns',
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.getenv('AWS_REGION')
+)
+SNS_TOPIC_ARN = os.getenv('SNS_TOPIC_ARN')
+
+def check_and_alert_low_inventory(item_id, new_quantity):
+    """
+    Checks if an item's quantity is below threshold (e.g., 5).
+    If so, sends an email via AWS SNS.
+    """
+    THRESHOLD = 5
+    
+    if int(new_quantity) < THRESHOLD:
+        try:
+            # Fetch item name for the message
+            cur = con.cursor(dictionary=True)
+            cur.execute("SELECT name FROM items WHERE id = %s", (item_id,))
+            item = cur.fetchone()
+            
+            if item:
+                message = f"URGENT: Inventory Low!\n\nItem: {item['name']}\nRemaining Quantity: {new_quantity}\n\nPlease restock immediately."
+                
+                sns_client.publish(
+                    TopicArn=SNS_TOPIC_ARN,
+                    Message=message,
+                    Subject=f"Low Inventory Alert: {item['name']}"
+                )
+                print(f"Alert sent for {item['name']}")
+                
+        except Exception as e:
+            print(f"Failed to send SNS alert: {e}")
 
 @app.route('/')
 def home():
@@ -101,6 +139,8 @@ def update_item():
     cur.execute("UPDATE items SET name=%s, quantity=%s, status=%s WHERE id=%s", (name, quantity, status, id))
     con.commit()
 
+    check_and_alert_low_inventory(id, quantity)
+
     return redirect(url_for('manage'))
 
 @app.route('/update_order', methods=['POST'])
@@ -145,9 +185,19 @@ def add_order():
     quantity = request.form.get('quantity')
     status = request.form.get('status')
     
-    cur = con.cursor()
-    cur.execute("INSERT INTO orders (item_id, quantity, status) VALUES (%s, %s, %s)", (item_id, quantity, status))
-    con.commit()
+    cur = con.cursor(dictionary=True)
+    cur.execute("SELECT quantity FROM items WHERE id = %s", (item_id,))
+    item = cur.fetchone()
+
+    if item:
+        current_stock = item['quantity']
+        new_stock = current_stock - order_quantity
+
+        cur.execute("UPDATE items SET quantity = %s WHERE id = %s", (new_stock, item_id))
+        cur.execute("INSERT INTO orders (item_id, quantity, status) VALUES (%s, %s, %s)", (item_id, quantity, status))
+        con.commit()
+
+        check_and_alert_low_inventory(item_id, new_stock)
 
     return redirect(url_for('manage'))
 
