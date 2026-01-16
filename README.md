@@ -1,43 +1,46 @@
-# Inventory-Management-WebApp
-This is a simple inventory management website created using Python Flask as middleware, MySQL for the back-end, and HTML, CSS, and Tailwind for the front-end. The website consists of three pages: Home, Manage Inventory, and Login. The Manage Inventory page allows users to update or fill the book inventory through the website and view it on the dashboard.
+# Cloud Inventory Management System
+
+A Flask-based Inventory Management System with MySQL database integration and AWS SNS notifications for low stock alerts.
 
 ## Features
 
-- Add new items to the inventory.
-- View the entire inventory on the dashboard page.
+- **Dashboard:** Real-time view of inventory, orders, and production status.
+- **Management:** Add, Edit, and Delete items, orders, and users.
+- **Alerts:** Automated email notifications via AWS SNS when stock drops below threshold.
+- **Dockerized:** One-command setup for the entire stack.
 
-## Installation
+## Prerequisites
 
-To run this project on your local machine, you will need to install the following dependencies:
+- Docker & Docker Desktop
+- AWS Account (for SNS alerts)
 
-- Python (version 3.6 or higher)
-- Flask (version 1.1.2 or higher)
-- MySQL (version 8.0 or higher)
-- Tailwind CSS (version 2.1.4 or higher)
+## Quick Start (Docker)
 
-After installing the dependencies, clone this repository to your local machine and run the following commands to start the Flask server:
-$ cd inventory-management-website
-$ export FLASK_APP=app.py
-$ flask run
-The website will now be running on http://localhost:5000.
+1. **Clone the repository**
+```bash
+git clone [https://github.com/Zubs/Cloud-Inventory.git](https://github.com/Zubs/Cloud-Inventory.git)
+cd Cloud-Inventory
+```
 
-## Usage
+2. **Configure Environment:** Create a .env file in the root directory with your AWS credentials
+```bash
+cp env.example .env
+```
 
-To use the inventory management website, follow these steps:
+3. **Run with Docker Compose:** This command builds the app and starts the database (automatically importing the schema).
+```
+docker-compose up --build
+```
 
-- Open the website on your browser.
-- Click on the Login page and enter your credentials to log in.
-- Once logged in, you will be redirected to the Manage Inventory page.
-- On the Manage Inventory page, you can add, edit, or delete items in the inventory.
-- Click on the Dashboard page to view the inventory data, which can be sorted and filtered by various attributes.
-- Use the search functionality to find specific items in the inventory.
-- View graphical representations of inventory data using charts or graphs.
-- Receive notifications when inventory levels of specific items fall below a certain threshold.
+4. **Access the App:** Open http://localhost:5000 in your browser.
 
-## Contributing
+## Manual Setup (Without Docker)
+1. Create a virtual environment: `python -m venv venv`
 
-If you'd like to contribute to this project, please fork the repository and make any changes you'd like. Once you've made your changes, submit a pull request and I'll review it as soon as possible.
+2. Activate it: `source venv/bin/activate` (Mac/Linux) or `venv\Scripts\activate` (Windows)
 
-## Acknowledgments
+Install dependencies: `pip install -r requirements.txt`
 
-Thank you to the Tailwind CSS team for creating such an amazing CSS framework.
+Ensure you have a local MySQL server running and import `items.sql`.
+
+Run the app: `flask --app main run`

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. The Flask Application
+  web:
+    build: .
+    ports:
+      - "5001:5001"
+    restart: on-failure
+    environment:
+      - DB_HOST=db  # Tells Flask to connect to the 'db' service defined below
+      # Pass through your AWS keys from your local .env file
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - SNS_TOPIC_ARN=${SNS_TOPIC_ARN}
+    depends_on:
+      - db
+
+  # 2. The MySQL Database
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: sample
+    ports:
+      - "3306:3306"
+    volumes:
+      # Data Persistence: Keeps data alive even if you restart containers
+      - mysql_data:/var/lib/mysql
+      # Auto-Import: This loads your items.sql when the DB is created!
+      - ./items.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  mysql_data:
